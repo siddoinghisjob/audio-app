@@ -78,16 +78,6 @@ def is_silent(data):
 
 # Preprocess the audio file
 def preprocess(file_path, frame_length=2048, hop_length=512):
-    '''
-    A process to an audio .wav file before executing a prediction.
-      Arguments:
-      - file_path - The system path to the audio file.
-      - frame_length - Length of the frame over which to compute the speech features. default: 2048
-      - hop_length - Number of samples to advance for each frame. default: 512
-
-      Return:
-        'X_3D' variable, containing a shape of: (batch, timesteps, feature) for a single file (batch = 1).
-    '''
     # Fetch sample rate.
     _, sr = librosa.load(path=file_path, sr=None)
     
@@ -133,7 +123,7 @@ if uploaded_file is not None:
     st.audio(file_path)
 
     # SESSION START
-    st.write("** Session started **")
+    st.write(" Session started ")
     total_predictions = []  # A list for all predictions in the session.
     tic = time.perf_counter()
 
