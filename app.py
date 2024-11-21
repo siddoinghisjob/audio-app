@@ -3,12 +3,9 @@ import librosa
 import soundfile as sf
 import numpy as np
 import matplotlib.pyplot as plt
-from keras.models import load_model
-from keras.models import model_from_json
-from tensorflow import keras
-from IPython.display import Audio
 import json
-
+from tensorflow import keras
+import time
 # Load the pre-trained model
 saved_model_path = 'model.json'
 saved_weights_path = 'model.h5'
@@ -51,14 +48,65 @@ def preprocess(file_path):
 # Streamlit UI
 st.title("Emotion Detection from Audio")
 
-uploaded_file = st.file_uploader("Upload an audio file", type=["wav", "mp3"])
+uploaded_file = st.file_uploader("Upload an audio file", type=["wav", "mp3", "m4a"])
 
 if uploaded_file is not None:
     temp_path = f"temp_audio.{uploaded_file.name.split('.')[-1]}"
     with open(temp_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
     
+    st.write("The audio file:")
     st.audio(temp_path, format="audio/wav")
+
+    # SESSION START
+    total_predictions = [] # A list for all predictions in the session.
+    tic = time.perf_counter()
+    y, sr = librosa.load(temp_path, sr=None)
+    RECORD_SECONDS = 8
+    hop_length = int(RECORD_SECONDS * sr)
+    for start in range(0, len(y), hop_length):
+        end = start + hop_length
+        data = y[start:end]
+
+        # Save the segmented audio to a temporary file
+        temp_audio_path = 'temp.wav'
+        sf.write(temp_audio_path, data, sr)
+
+        # Play the segmented audio
+        st.write(f"Playing segment from {start/sr:.2f} to {end/sr:.2f} seconds:")
+        st.audio(temp_audio_path, format="audio/wav")
+
+        x = preprocess(temp_audio_path)
+        predictions = model.predict(x)
+        pred_list = list(predictions)
+        pred_np = np.squeeze(np.array(pred_list).tolist(), axis=0) # Get rid of 'array' & 'dtype' statements.
+        total_predictions.append(pred_np)
+
+        st.write("Emotion probabilities:")
+        fig, ax = plt.subplots(figsize=(10, 2))
+        ax.bar(emo_list, pred_np, color='darkturquoise')
+        ax.set_ylabel("Probability (%)")
+        st.pyplot(fig)
+
+        max_emo = np.argmax(predictions)
+        st.write(f"Detected emotion: **{emotions.get(max_emo, 'Unknown')}**")
+
+        print(100*'-')
+
+    # SESSION END
+    toc = time.perf_counter()
+    st.write('** session ended')
+
+    # Present emotion distribution for the whole session.
+    total_predictions_np = np.mean(np.array(total_predictions).tolist(), axis=0)
+    fig = plt.figure(figsize=(10, 5))
+    plt.bar(emo_list, total_predictions_np, color='indigo')
+    plt.ylabel("Mean probability (%)")
+    plt.title("Session Summary")
+    plt.show()
+
+    print(f"Emotions analyzed for: {(toc - tic):0.4f} seconds")
+    
     st.write("Analyzing audio...")
     
     x = preprocess(temp_path)
